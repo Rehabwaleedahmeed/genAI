@@ -1,0 +1,19 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+ui/node_modules/
+
+# Frontend build output
+ui/build/
+
+# OS/editor
+.DS_Store
+.vscode/
