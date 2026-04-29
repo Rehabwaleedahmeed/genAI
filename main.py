@@ -1,8 +1,11 @@
+import csv
 import json
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
+from urllib.parse import quote_plus
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,7 +43,9 @@ _load_env_file()
 API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 SESSION_MEMORY: Dict[str, List[dict]] = {}
+SESSION_SUMMARIES: Dict[str, str] = {}
 MAX_MEMORY_MESSAGES = 6
+CSV_LOG_PATH = Path(__file__).resolve().with_name("nutrition_agent_log.csv")
 
 
 class Ingredient(BaseModel):
@@ -50,6 +55,17 @@ class Ingredient(BaseModel):
 class RequestModel(BaseModel):
     ingredients: List[Ingredient] = []
     ingredients_text: str = ""
+    image_url: Optional[str] = None
+    image_data_url: Optional[str] = None
+    session_id: str = "default"
+    creativity: Literal["strict", "balanced", "creative"] = "balanced"
+    response_mode: Literal["concise", "detailed"] = "concise"
+
+
+class AssistantRequestModel(BaseModel):
+    meal_text: str = ""
+    meal_description: str = ""
+    location_query: str = ""
     image_url: Optional[str] = None
     image_data_url: Optional[str] = None
     session_id: str = "default"
@@ -77,6 +93,184 @@ def _parse_ingredient_text(value: str) -> List[str]:
         return []
     parts = [p.strip() for p in re.split(r",|\n", value) if p.strip()]
     return parts
+
+
+def _extract_meal_terms(*values: str) -> List[str]:
+    seen = set()
+    terms: List[str] = []
+    for value in values:
+        for item in _parse_ingredient_text(value):
+            key = item.lower()
+            if key not in seen:
+                seen.add(key)
+                terms.append(item)
+    return terms
+
+
+def _estimate_nutrition(terms: List[str]) -> dict:
+    text = " ".join(terms).lower()
+    calories = 250
+    protein = 12
+    carbs = 20
+    fat = 10
+    fiber = 4
+
+    if re.search(r"chicken|turkey|fish|salmon|tuna|beef|tofu|eggs|lentil|beans|yogurt", text):
+        calories += 180
+        protein += 22
+    if re.search(r"rice|pasta|bread|potato|oats|noodle|quinoa|wrap", text):
+        calories += 160
+        carbs += 34
+    if re.search(r"avocado|olive oil|nuts|peanut|seed|cheese|butter", text):
+        calories += 140
+        fat += 12
+    if re.search(r"broccoli|spinach|salad|lettuce|cucumber|carrot|pepper|tomato|vegetable", text):
+        calories += 40
+        fiber += 5
+    if re.search(r"fruit|berry|apple|banana|orange", text):
+        calories += 60
+        carbs += 14
+        fiber += 3
+
+    return {
+        "estimated_calories": int(calories),
+        "protein_g": int(protein),
+        "carbs_g": int(carbs),
+        "fat_g": int(fat),
+        "fiber_g": int(fiber),
+    }
+
+
+def _build_nutrition_prompt(creativity: str, response_mode: str, nearby_search: bool) -> str:
+    creativity_map = {
+        "strict": "Keep the tone conservative and practical.",
+        "balanced": "Balance reliability and helpfulness.",
+        "creative": "Offer a little more variety while staying realistic.",
+    }
+    detail_map = {
+        "concise": "Keep the response short and structured.",
+        "detailed": "Include a little more explanatory detail.",
+    }
+
+    search_note = (
+        "The user asked for nearby healthy food options, so include a brief search-oriented suggestion."
+        if nearby_search
+        else "Do not invent nearby food locations unless the user asked for them."
+    )
+
+    return f"""
+You are a Nutrition AI Assistant.
+{creativity_map[creativity]}
+{detail_map[response_mode]}
+
+Return ONLY valid JSON with these keys:
+- meal_analysis: string
+- nutrition_summary: object with estimated_calories, protein_g, carbs_g, fat_g, fiber_g
+- recommendations: array of 2 to 4 short strings
+- search_query_hint: string
+
+Rules:
+- Do not give medical diagnoses or strict diet plans.
+- Keep advice general and safety-focused.
+- {search_note}
+""".strip()
+
+
+def _build_search_query(location_query: str, terms: List[str]) -> str:
+    base_query = location_query.strip() or "near me"
+    category = "healthy restaurants grocery stores organic food"
+    meal_hint = " ".join(terms[:3]).strip()
+    if meal_hint:
+        return f"{category} {base_query} {meal_hint}".strip()
+    return f"{category} {base_query}".strip()
+
+
+def _search_nearby_food(location_query: str, terms: List[str]) -> List[dict]:
+    query = location_query.strip()
+    if not query:
+        return []
+
+    encoded_query = quote_plus(query)
+    geocode_response = requests.get(
+        f"https://nominatim.openstreetmap.org/search?q={encoded_query}&format=jsonv2&limit=1",
+        headers={"User-Agent": "genAI-nutrition-agent/1.0"},
+        timeout=20,
+    )
+    geocode_response.raise_for_status()
+    geocode_data = geocode_response.json()
+    if not geocode_data:
+        return []
+
+    lat = float(geocode_data[0]["lat"])
+    lon = float(geocode_data[0]["lon"])
+    search_tags = [
+        ("amenity", "restaurant"),
+        ("amenity", "cafe"),
+        ("shop", "supermarket"),
+        ("shop", "organic"),
+        ("shop", "greengrocer"),
+    ]
+
+    overpass_query = "[out:json][timeout:25];(" + "".join(
+        f'node(around:3000,{lat},{lon})["{key}"="{value}"];' for key, value in search_tags
+    ) + ");out center 10;"
+
+    response = requests.post(
+        "https://overpass-api.de/api/interpreter",
+        data={"data": overpass_query},
+        headers={"User-Agent": "genAI-nutrition-agent/1.0"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    results = []
+    for element in data.get("elements", [])[:8]:
+        tags = element.get("tags", {}) if isinstance(element, dict) else {}
+        name = tags.get("name") or tags.get("brand") or "Nearby option"
+        category = tags.get("amenity") or tags.get("shop") or "food"
+        results.append(
+            {
+                "name": name,
+                "category": category,
+                "address": ", ".join(
+                    part for part in [tags.get("addr:housenumber"), tags.get("addr:street"), tags.get("addr:city")] if part
+                ),
+            }
+        )
+
+    return results
+
+
+def _append_csv_log(record: dict) -> str:
+    CSV_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    file_exists = CSV_LOG_PATH.exists()
+    with CSV_LOG_PATH.open("a", encoding="utf-8", newline="") as csv_file:
+        writer = csv.DictWriter(
+            csv_file,
+            fieldnames=[
+                "timestamp",
+                "session_id",
+                "meal_text",
+                "meal_analysis",
+                "calories",
+                "recommendations",
+                "location_query",
+                "search_count",
+            ],
+        )
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(record)
+    return str(CSV_LOG_PATH)
+
+
+def _summarize_context(session_id: str, meal_analysis: str, search_count: int) -> str:
+    summary = f"Meal analyzed with {search_count} nearby options" if search_count else "Meal analyzed with no nearby search"
+    if meal_analysis:
+        summary = f"{summary}. {meal_analysis[:220].strip()}"
+    SESSION_SUMMARIES[session_id] = summary
+    return summary
 
 
 def _build_system_prompt(creativity: str, response_mode: str) -> str:
@@ -286,3 +480,130 @@ def generate(req: RequestModel):
     ]
 
     return {"data": meals}
+
+
+@app.post("/assistant")
+def assistant(req: AssistantRequestModel):
+    terms = _extract_meal_terms(req.meal_text, req.meal_description)
+    if not terms and not req.image_url and not req.image_data_url:
+        raise HTTPException(status_code=400, detail="Provide meal text, a meal description, or an image.")
+
+    memory = SESSION_MEMORY.get(req.session_id, [])
+    summary_context = SESSION_SUMMARIES.get(req.session_id, "")
+    nearby_search = bool(req.location_query.strip())
+    nutrition = _estimate_nutrition(terms)
+
+    user_text = (
+        "User request:\n"
+        f"- Meal text: {req.meal_text.strip() or 'None'}\n"
+        f"- Meal description: {req.meal_description.strip() or 'None'}\n"
+        f"- Nearby food query: {req.location_query.strip() or 'None'}\n"
+        f"- Existing session summary: {summary_context or 'None'}\n"
+        "Task: analyze the meal, estimate nutrition, recommend safe improvements, and search nearby healthy options when requested."
+    )
+
+    user_content = [{"type": "text", "text": user_text}]
+    if req.image_data_url:
+        user_content.append({"type": "image_url", "image_url": {"url": req.image_data_url}})
+    elif req.image_url:
+        user_content.append({"type": "image_url", "image_url": {"url": req.image_url}})
+
+    messages = [{"role": "system", "content": _build_nutrition_prompt(req.creativity, req.response_mode, nearby_search)}]
+    if summary_context:
+        messages.append({"role": "system", "content": f"Session summary: {summary_context}"})
+    messages.extend(memory[-MAX_MEMORY_MESSAGES:])
+    messages.append({"role": "user", "content": user_content})
+
+    meal_analysis = ""
+    recommendations = []
+    nutrition_summary = nutrition
+
+    use_fallback = not API_KEY
+    if not use_fallback:
+        try:
+            response = requests.post(
+                url="https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "messages": messages,
+                    "temperature": 0.3 if req.creativity == "strict" else (0.6 if req.creativity == "balanced" else 0.85),
+                },
+                timeout=60,
+            )
+            response.raise_for_status()
+            raw_data = response.json()
+            content = raw_data["choices"][0]["message"]["content"]
+            parsed = _extract_json_payload(content)
+            meal_analysis = str(parsed.get("meal_analysis", "")).strip()
+            nutrition_summary = parsed.get("nutrition_summary", nutrition)
+            recommendations = [str(item).strip() for item in parsed.get("recommendations", []) if str(item).strip()]
+        except (requests.exceptions.Timeout, requests.exceptions.HTTPError, requests.exceptions.RequestException, KeyError, IndexError, TypeError, json.JSONDecodeError):
+            meal_analysis = ""
+            recommendations = []
+
+    if not meal_analysis:
+        joined_terms = ", ".join(terms) if terms else "the provided meal"
+        meal_analysis = f"This meal appears to center on {joined_terms}. It looks workable, but portion balance and vegetables would improve the overall nutrition profile."
+        recommendations = [
+            "Add a vegetable side or salad for extra fiber.",
+            "Use water or an unsweetened drink to keep the meal lighter.",
+            "Choose a protein source if the meal is mostly starch-based.",
+        ]
+
+    if nearby_search:
+        recommendations.append("Compare nearby options for lower-sodium and higher-fiber choices.")
+
+    nearby_results = []
+    if nearby_search:
+        try:
+            nearby_results = _search_nearby_food(req.location_query, terms)
+        except requests.exceptions.RequestException:
+            nearby_results = []
+
+    storage_record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "session_id": req.session_id,
+        "meal_text": req.meal_text.strip() or req.meal_description.strip(),
+        "meal_analysis": meal_analysis,
+        "calories": nutrition_summary.get("estimated_calories", nutrition["estimated_calories"]),
+        "recommendations": " | ".join(recommendations[:4]),
+        "location_query": req.location_query.strip(),
+        "search_count": len(nearby_results),
+    }
+    csv_path = _append_csv_log(storage_record)
+    context_summary = _summarize_context(req.session_id, meal_analysis, len(nearby_results))
+
+    SESSION_MEMORY[req.session_id] = [
+        *memory[-(MAX_MEMORY_MESSAGES - 2):],
+        {"role": "user", "content": user_content},
+        {
+            "role": "assistant",
+            "content": json.dumps(
+                {
+                    "meal_analysis": meal_analysis,
+                    "nutrition_summary": nutrition_summary,
+                    "recommendations": recommendations,
+                    "search_results": nearby_results,
+                    "csv_path": csv_path,
+                    "session_summary": context_summary,
+                }
+            ),
+        },
+    ]
+
+    return {
+        "meal_analysis": meal_analysis,
+        "nutrition_summary": nutrition_summary,
+        "recommendations": recommendations,
+        "search_results": nearby_results,
+        "csv_storage": {
+            "saved": True,
+            "path": csv_path,
+            "session_summary": context_summary,
+        },
+        "disclaimer": "This is not medical or dietary advice. Consult a qualified professional.",
+    }

@@ -1,9 +1,12 @@
 import { useState } from "react";
 import "./App.css";
 
+const disclaimer = "This is not medical or dietary advice. Consult a qualified professional.";
+
 function App() {
   const [ingredients, setIngredients] = useState("");
-  const [recipes, setRecipes] = useState([]);
+  const [locationQuery, setLocationQuery] = useState("");
+  const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [imageDataUrl, setImageDataUrl] = useState("");
@@ -47,24 +50,25 @@ function App() {
       .map((name) => ({ name }));
 
     if (!arr.length && !imageDataUrl) {
-      setError("Please enter ingredients text or upload an ingredient image.");
-      setRecipes([]);
+      setError("Please enter meal text or upload a food image.");
+      setReport(null);
       return;
     }
 
     setLoading(true);
     setError("");
-    setRecipes([]);
+    setReport(null);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/generate", {
+      const res = await fetch("http://127.0.0.1:8000/assistant", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          ingredients: arr,
-          ingredients_text: ingredients,
+          meal_text: ingredients,
+          meal_description: ingredients,
+          location_query: locationQuery,
           image_data_url: imageDataUrl || null,
           creativity,
           response_mode: responseMode,
@@ -78,10 +82,9 @@ function App() {
         throw new Error(detail || "Failed to generate meals.");
       }
 
-      const normalized = Array.isArray(data?.data) ? data.data : [];
-      setRecipes(normalized);
+      setReport(data || null);
     } catch (err) {
-      setRecipes([]);
+      setReport(null);
       setError(err.message || "Something went wrong while generating meals.");
     } finally {
       setLoading(false);
@@ -92,22 +95,22 @@ function App() {
     <div className="page-shell">
       <main className="app">
         <header className="hero">
-          <p className="eyebrow">Smart Meal Planner</p>
-          <h1>AI Chef</h1>
-          <p className="subtitle">Drop in ingredients and get a practical meal plan with ready-to-cook steps.</p>
+          <p className="eyebrow">Multi-Modal Nutrition AI</p>
+          <h1>Nutrition Assistant</h1>
+          <p className="subtitle">Drop in text, meal descriptions, or a food image and get practical nutrition guidance with structured meal support.</p>
         </header>
 
-        <section className="controls" aria-label="Recipe input">
-          <label htmlFor="ingredients" className="input-label">Ingredients</label>
+        <section className="controls" aria-label="Nutrition input">
+          <label htmlFor="ingredients" className="input-label">Meal text or ingredients</label>
           <div className="input-row">
             <input
               id="ingredients"
               value={ingredients}
               onChange={(e) => setIngredients(e.target.value)}
-              placeholder="chicken, rice, garlic"
+              placeholder="salmon, rice, spinach or describe the meal"
             />
             <button onClick={sendData} disabled={loading}>
-              {loading ? "Cooking..." : "Cook"}
+              {loading ? "Analyzing..." : "Analyze"}
             </button>
           </div>
 
@@ -135,58 +138,99 @@ function App() {
             </label>
           </div>
 
+          <label className="mini-field location-field">
+            <span>Nearby food location</span>
+            <input
+              value={locationQuery}
+              onChange={(e) => setLocationQuery(e.target.value)}
+              placeholder="City, neighborhood, or postal code"
+            />
+          </label>
+
           {imageName && <p className="hint-text">Image loaded: {imageName}</p>}
           <p className="hint-text">Session: {sessionId}</p>
+          <p className="disclaimer-banner">{disclaimer}</p>
           {error && <p className="error-text">{error}</p>}
         </section>
 
-        {!loading && !error && recipes.length === 0 && (
+        {!loading && !error && !report && (
           <section className="empty-state">
-            <h2>Your recipe cards will appear here</h2>
-            <p>Try ingredients like <span>"chicken, rice, onion"</span> to generate ideas.</p>
+            <h2>Your meal analysis will appear here</h2>
+            <p>Try text like <span>"grilled chicken with rice and broccoli"</span> and optionally add a location to search nearby healthy options.</p>
           </section>
         )}
 
         {loading && (
           <section className="loading-state" aria-live="polite">
             <div className="pulse" />
-            <p>Building your meal ideas...</p>
+            <p>Analyzing your meal and nearby options...</p>
           </section>
         )}
 
-        {recipes.length > 0 && (
-          <section className="recipes-grid" aria-label="Generated recipes">
-            {recipes.map((recipe, index) => (
-              <article className="recipe-card" key={`${recipe.meal || "meal"}-${index}`}>
-                <div className="card-top">
-                  <h2>{recipe.meal || "Untitled Meal"}</h2>
-                  <div className="meta-row">
-                    <span>{recipe.cooking_time || "Time N/A"}</span>
-                    <span>{recipe.servings || "Servings N/A"}</span>
-                  </div>
-                </div>
+        {report && (
+          <section className="report-grid" aria-label="Nutrition analysis results">
+            <article className="recipe-card">
+              <div className="card-top">
+                <h2>Meal Analysis</h2>
+              </div>
+              <p className="analysis-text">{report.meal_analysis || "No analysis returned."}</p>
+            </article>
 
-                <div>
-                  <h3>Ingredients</h3>
-                  <ul className="ingredient-chips">
-                    {(recipe.ingredients || []).map((item, itemIndex) => (
-                      <li key={`${item.name || "ingredient"}-${itemIndex}`} className="chip">
-                        {item.name || "Unknown"}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            <article className="recipe-card">
+              <div className="card-top">
+                <h2>Nutrition Summary</h2>
+              </div>
+              <div className="nutrition-stats">
+                <span><strong>{report?.nutrition_summary?.estimated_calories ?? "N/A"}</strong> kcal</span>
+                <span><strong>{report?.nutrition_summary?.protein_g ?? "N/A"}</strong> g protein</span>
+                <span><strong>{report?.nutrition_summary?.carbs_g ?? "N/A"}</strong> g carbs</span>
+                <span><strong>{report?.nutrition_summary?.fat_g ?? "N/A"}</strong> g fat</span>
+                <span><strong>{report?.nutrition_summary?.fiber_g ?? "N/A"}</strong> g fiber</span>
+              </div>
+            </article>
 
-                <div>
-                  <h3>Instructions</h3>
-                  <ol className="steps-list">
-                    {(recipe.instructions || []).map((step, stepIndex) => (
-                      <li key={`${stepIndex}-${step}`}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
-              </article>
-            ))}
+            <article className="recipe-card">
+              <div className="card-top">
+                <h2>Recommendations</h2>
+              </div>
+              <ul className="steps-list compact-list">
+                {(report.recommendations || []).map((item, itemIndex) => (
+                  <li key={`${itemIndex}-${item}`}>{item}</li>
+                ))}
+              </ul>
+            </article>
+
+            <article className="recipe-card">
+              <div className="card-top">
+                <h2>Nearby Food Search</h2>
+              </div>
+              {Array.isArray(report.search_results) && report.search_results.length > 0 ? (
+                <ul className="search-results">
+                  {report.search_results.map((item, index) => (
+                    <li key={`${item.name || "result"}-${index}`}>
+                      <strong>{item.name || "Nearby option"}</strong>
+                      <span>{item.category || "food"}</span>
+                      {item.address ? <p>{item.address}</p> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="analysis-text">No nearby search was run or no results were found.</p>
+              )}
+            </article>
+
+            <article className="recipe-card">
+              <div className="card-top">
+                <h2>CSV Storage</h2>
+              </div>
+              <p className="analysis-text">
+                Saved: {report?.csv_storage?.saved ? "Yes" : "No"}
+                {report?.csv_storage?.path ? ` · ${report.csv_storage.path}` : ""}
+              </p>
+              {report?.csv_storage?.session_summary ? (
+                <p className="hint-text">Session summary: {report.csv_storage.session_summary}</p>
+              ) : null}
+            </article>
           </section>
         )}
       </main>
