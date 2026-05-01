@@ -146,29 +146,6 @@
   font-size: 0.85rem;
 }
 
-.disclaimer-banner {
-  margin: 0.85rem 0 0;
-  padding: 0.8rem 0.9rem;
-  border-radius: 12px;
-  border: 1px solid rgba(179, 38, 30, 0.18);
-  background: rgba(255, 244, 241, 0.9);
-  color: #8f241d;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.location-field {
-  margin-top: 0.85rem;
-}
-
-.location-field input {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-  padding: 0.58rem 0.68rem;
-  font: inherit;
-}
-
 .empty-state,
 .loading-state {
   margin-top: 1.1rem;
@@ -209,13 +186,6 @@
   gap: 1rem;
 }
 
-.report-grid {
-  margin-top: 1.2rem;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-
 .recipe-card {
   background: var(--bg-surface);
   border: 1px solid var(--line);
@@ -225,69 +195,6 @@
   display: grid;
   gap: 1rem;
   animation: rise 500ms ease-out;
-}
-
-.analysis-text {
-  margin: 0;
-  color: var(--text-main);
-  line-height: 1.55;
-}
-
-.nutrition-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
-}
-
-.nutrition-stats span {
-  border-radius: 14px;
-  border: 1px solid #e6dfcf;
-  background: #faf7ef;
-  padding: 0.75rem 0.85rem;
-  font-size: 0.92rem;
-  color: var(--text-main);
-}
-
-.nutrition-stats strong {
-  font-size: 1.08rem;
-}
-
-.compact-list {
-  gap: 0.45rem;
-}
-
-.search-results {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-
-.search-results li {
-  border: 1px solid #e6dfcf;
-  background: #faf7ef;
-  border-radius: 14px;
-  padding: 0.8rem 0.9rem;
-}
-
-.search-results strong {
-  display: block;
-  font-size: 0.98rem;
-}
-
-.search-results span {
-  display: inline-block;
-  margin-top: 0.25rem;
-  color: var(--accent-strong);
-  font-size: 0.84rem;
-  text-transform: capitalize;
-}
-
-.search-results p {
-  margin: 0.4rem 0 0;
-  color: var(--text-muted);
-  font-size: 0.9rem;
 }
 
 .card-top h2 {
@@ -358,14 +265,6 @@
   }
 
   .controls-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .report-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .nutrition-stats {
     grid-template-columns: 1fr;
   }
 }
