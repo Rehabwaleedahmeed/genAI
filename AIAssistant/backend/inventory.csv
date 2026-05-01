@@ -1,0 +1,35 @@
+product_id,name,category,size,color,price,stock,description
+1,Classic T-Shirt,Tops,M,Black,19.99,45,Comfortable 100% cotton t-shirt perfect for everyday wear
+2,Classic T-Shirt,Tops,L,White,19.99,32,Comfortable 100% cotton t-shirt perfect for everyday wear
+3,Classic T-Shirt,Tops,S,Blue,19.99,28,Comfortable 100% cotton t-shirt perfect for everyday wear
+4,Slim Fit Jeans,Bottoms,32,Dark Blue,59.99,22,Modern slim fit denim jeans with stretch fabric
+5,Slim Fit Jeans,Bottoms,34,Black,59.99,18,Modern slim fit denim jeans with stretch fabric
+6,Slim Fit Jeans,Bottoms,36,Dark Blue,59.99,15,Modern slim fit denim jeans with stretch fabric
+7,Summer Dress,Dresses,M,Floral,45.99,12,Light and breezy summer dress perfect for warm weather
+8,Summer Dress,Dresses,S,Floral,45.99,8,Light and breezy summer dress perfect for warm weather
+9,Summer Dress,Dresses,L,Floral,45.99,10,Light and breezy summer dress perfect for warm weather
+10,Wool Sweater,Tops,L,Gray,89.99,20,Luxurious wool sweater ideal for cold seasons
+11,Wool Sweater,Tops,M,Beige,89.99,25,Luxurious wool sweater ideal for cold seasons
+12,Wool Sweater,Tops,XL,Navy,89.99,14,Luxurious wool sweater ideal for cold seasons
+13,Athletic Shorts,Bottoms,M,Black,34.99,35,Quick-dry athletic shorts with mesh lining
+14,Athletic Shorts,Bottoms,L,Gray,34.99,28,Quick-dry athletic shorts with mesh lining
+15,Athletic Shorts,Bottoms,S,Blue,34.99,40,Quick-dry athletic shorts with mesh lining
+16,Casual Jacket,Jackets,M,Khaki,99.99,12,Versatile casual jacket suitable for spring and fall
+17,Casual Jacket,Jackets,L,Navy,99.99,10,Versatile casual jacket suitable for spring and fall
+18,Casual Jacket,Jackets,XL,Brown,99.99,8,Versatile casual jacket suitable for spring and fall
+19,Leather Belt,Accessories,One Size,Black,29.99,50,Premium leather belt with metal buckle
+20,Leather Belt,Accessories,One Size,Brown,29.99,45,Premium leather belt with metal buckle
+21,Winter Coat,Outerwear,M,Black,199.99,6,Heavy-duty winter coat with insulation
+22,Winter Coat,Outerwear,L,Gray,199.99,5,Heavy-duty winter coat with insulation
+23,Winter Coat,Outerwear,XL,Navy,199.99,4,Heavy-duty winter coat with insulation
+24,Running Shoes,Footwear,10,White,129.99,18,Professional running shoes with cushioning
+25,Running Shoes,Footwear,11,Black,129.99,15,Professional running shoes with cushioning
+26,Casual Sneakers,Footwear,9,White,79.99,30,Comfortable casual sneakers for everyday use
+27,Casual Sneakers,Footwear,10,Gray,79.99,25,Comfortable casual sneakers for everyday use
+28,Casual Sneakers,Footwear,11,Black,79.99,20,Comfortable casual sneakers for everyday use
+29,Formal Shirt,Tops,M,White,64.99,18,Crisp white formal shirt perfect for business meetings
+30,Formal Shirt,Tops,L,Light Blue,64.99,15,Crisp formal shirt perfect for business meetings
+31,Chino Pants,Bottoms,32,Khaki,54.99,22,Classic chino pants suitable for casual and semi-formal wear
+32,Chino Pants,Bottoms,34,Navy,54.99,19,Classic chino pants suitable for casual and semi-formal wear
+33,Polo Shirt,Tops,M,Navy,44.99,30,Sporty polo shirt with embroidered logo
+34,Polo Shirt,Tops,L,White,44.99,28,Sporty polo shirt with embroidered logo

@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "short_name": "StyleHub",
+  "name": "StyleHub AI Fashion Assistant",
+  "icons": [],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#667eea"
+}

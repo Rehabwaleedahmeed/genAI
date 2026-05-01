@@ -1,0 +1,33 @@
+{
+  "store_name": "StyleHub - Premium Clothing Store",
+  "store_info": {
+    "description": "Your one-stop destination for trendy and comfortable clothing",
+    "mission": "Provide high-quality clothing that combines style, comfort, and affordability",
+    "categories": ["Tops", "Bottoms", "Dresses", "Jackets", "Outerwear", "Footwear", "Accessories"]
+  },
+  "current_trends": {
+    "season": "Spring-Summer 2026",
+    "trending_styles": ["Minimalist Casual", "Athleisure", "Vintage Revival", "Sustainable Fashion"],
+    "popular_colors": ["Neutral Tones", "Pastels", "Earthy Tones", "Classic Black"],
+    "focus_items": ["Sustainable Materials", "Comfortable Fits", "Versatile Pieces"]
+  },
+  "promotions": [
+    {
+      "name": "Spring Sale",
+      "discount": "20% off on selected Tops and Dresses",
+      "valid_until": "2026-05-31"
+    },
+    {
+      "name": "Free Shipping",
+      "description": "Free shipping on orders over $100",
+      "valid_until": "2026-06-30"
+    }
+  ],
+  "return_policy": "30-day money-back guarantee on all items",
+  "payment_methods": ["Credit Card", "Debit Card", "Digital Wallets", "Buy Now Pay Later"],
+  "customer_support": {
+    "email": "support@stylehub.com",
+    "phone": "+1-800-STYLE-HUB",
+    "live_chat": "Available 9 AM - 9 PM EST"
+  }
+}
